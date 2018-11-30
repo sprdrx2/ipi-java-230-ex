@@ -5,5 +5,6 @@ import com.ipiecoles.java.java230.model.Technicien;
 import java.util.List;
 
 public interface TechnicienRepository extends BaseEmployeRepository<Technicien> {
-    List<Technicien> findByGradeg(Integer grade);
+    List<Technicien> findByGrade(Integer grade);
+    List<Technicien> findByGradeBetween(Integer gradeMin, Integer gradeMax);
 }

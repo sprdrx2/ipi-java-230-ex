@@ -4,13 +4,16 @@ import com.ipiecoles.java.java230.exceptions.TechnicienException;
 import org.joda.time.LocalDate;
 
 import javax.persistence.Entity;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import javax.persistence.Transient;
 import java.util.Objects;
 
 @Entity
 public class Technicien extends Employe implements Comparable<Technicien> {
 
-	@Transient
+	@ManyToOne
+	@JoinColumn (name = "manager_id")
 	private Manager manager;
 
 	private Integer grade;
