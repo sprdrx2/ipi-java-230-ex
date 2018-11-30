@@ -3,13 +3,17 @@ package com.ipiecoles.java.java230.model;
 import com.ipiecoles.java.java230.exceptions.TechnicienException;
 import org.joda.time.LocalDate;
 
+import javax.persistence.Entity;
+import javax.persistence.Transient;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Entity
 public class Manager extends Employe {
 
+	@Transient
 	private Set<Technicien> equipe = new HashSet();
 
 	public Manager(){
