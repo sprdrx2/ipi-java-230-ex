@@ -130,24 +130,15 @@ public class MyRunner implements CommandLineRunner {
      * @throws BatchException s'il y a un problème sur cette ligne
      */
     private void processCommercial(String ligneCommercial) throws BatchException {
-        Commercial c;
-        ArrayList common;
+        Commercial c = new Commercial();
+
         //logger.info("traitement commercial: " + ligneCommercial);
         String[] l = ligneCommercial.split(",");
         if(l.length != NB_CHAMPS_COMMERCIAL) {
             throw new BatchException("nombre de champs incorrect.");
         }
 
-        common = processCommon(ligneCommercial);
-        String nom, prenom, matricule;
-        LocalDate dateEmbauche;
-        Double salaire;
-
-        matricule = (String) common.get(0);
-        nom = (String) common.get(1);
-        prenom = (String) common.get(2);
-        dateEmbauche = (LocalDate) common.get(3);
-        salaire = (Double) common.get(4);
+       c = (Commercial) processCommon(ligneCommercial, (Employe) c);
 
        Double caAnnuel;
        try {
@@ -166,7 +157,8 @@ public class MyRunner implements CommandLineRunner {
         }
 
         try {
-            c = new Commercial(nom, prenom, matricule, dateEmbauche, salaire, caAnnuel, performance);
+            c.setCaAnnuel(caAnnuel);
+            c.setPerformance(performance);
         }
         catch (Exception e) {
             throw new BatchException("creation objet impossible: " + e.getMessage());
@@ -181,28 +173,20 @@ public class MyRunner implements CommandLineRunner {
      * @throws BatchException s'il y a un problème sur cette ligne
      */
     private void processManager(String ligneManager) throws BatchException {
-        Manager m;
-        ArrayList common;
+        Manager m = new Manager();
+
         //logger.info("traitement manager: " + ligneManager);
         String[] l = ligneManager.split(",");
         if(l.length != NB_CHAMPS_MANAGER) {
             throw new BatchException("nombre de champs incorrect.");
         }
 
-        common = processCommon(ligneManager);
-        String nom, prenom, matricule;
-        LocalDate dateEmbauche;
-        Double salaire;
+        m = (Manager) processCommon(ligneManager, (Employe) m);
 
-        matricule = (String) common.get(0);
-        nom = (String) common.get(1);
-        prenom = (String) common.get(2);
-        dateEmbauche = (LocalDate) common.get(3);
-        salaire = (Double) common.get(4);
 
         try {
             HashSet<Technicien> equipe = new HashSet();
-            m = new Manager(nom, prenom, matricule, dateEmbauche, salaire, equipe);
+            m.setEquipe(equipe);
         }
         catch (Exception e) {
             throw new BatchException("creation objet impossible: " + e.getMessage());
@@ -218,24 +202,16 @@ public class MyRunner implements CommandLineRunner {
      * @throws BatchException s'il y a un problème sur cette ligne
      */
     private void processTechnicien(String ligneTechnicien) throws BatchException {
-        Technicien t;
-        ArrayList common;
+        Technicien t = new Technicien();
+
         //logger.info("traitement technicien: " + ligneTechnicien);
         String[] l = ligneTechnicien.split(",");
         if(l.length != NB_CHAMPS_TECHNICIEN) {
             throw new BatchException("nombre de champs incorrect.");
         }
 
-        common = processCommon(ligneTechnicien);
-        String nom, prenom, matricule;
-        LocalDate dateEmbauche;
-        Double salaire;
+        t = (Technicien) processCommon(ligneTechnicien, (Employe) t);
 
-        matricule = (String) common.get(0);
-        nom = (String) common.get(1);
-        prenom = (String) common.get(2);
-        dateEmbauche = (LocalDate) common.get(3);
-        salaire = (Double) common.get(4);
 
         Integer grade;
         try {
@@ -254,7 +230,9 @@ public class MyRunner implements CommandLineRunner {
         }
 
         try {
-            t = new Technicien(nom, prenom, matricule, dateEmbauche, salaire, grade);
+            t.setGrade(grade);
+            t.setManager(managerRepository.findByMatricule(manager));
+            t.setSalaire(Double.parseDouble(l[4]));
         }
         catch (Exception e) {
             throw new BatchException("creation objet impossible: " + e.getMessage());
@@ -281,9 +259,8 @@ public class MyRunner implements CommandLineRunner {
         }
     }
 
-    private ArrayList processCommon(String ligne) throws BatchException {
+    private Employe processCommon(String ligne, Employe emp) throws BatchException {
         String[] l = ligne.split(",");
-        ArrayList r = new ArrayList();
 
         String matricule, nom, prenom;
         matricule = l[0]; nom = l[1]; prenom = l[2];
@@ -307,8 +284,22 @@ public class MyRunner implements CommandLineRunner {
             throw new BatchException("champ salaire invalide: " + e.getMessage());
         }
 
-        r.add(matricule); r.add(nom); r.add(prenom); r.add(dateEmbauche); r.add(salaire);
-        return r;
+        try {
+            emp.setMatricule(matricule);
+            emp.setNom(nom);
+            emp.setPrenom(prenom);
+            emp.setDateEmbauche(dateEmbauche);
+            // les techniciens ont besoin du grade pour calculer le salaire
+            // pour cette classe, le champ salaire est donc délégué à processTechnicien
+            if(!(emp instanceof Technicien)) {
+                emp.setSalaire(salaire);
+            }
+        }
+        catch(Exception e) {
+            throw new BatchException("creation objet impossible: " + e.getMessage());
+        }
+
+        return emp;
     }
 
 }
