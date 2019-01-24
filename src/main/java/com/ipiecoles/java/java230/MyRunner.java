@@ -7,6 +7,7 @@ import com.ipiecoles.java.java230.model.Manager;
 import com.ipiecoles.java.java230.model.Technicien;
 import com.ipiecoles.java.java230.repository.EmployeRepository;
 import com.ipiecoles.java.java230.repository.ManagerRepository;
+import com.ipiecoles.java.java230.repository.TechnicienRepository;
 import org.hibernate.engine.jdbc.batch.spi.Batch;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
@@ -18,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-
 import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -40,6 +40,8 @@ public class MyRunner implements CommandLineRunner {
     private static final int NB_CHAMPS_TECHNICIEN = 7;
     private static final String REGEX_MATRICULE_MANAGER = "^M[0-9]{5}$";
     private static final int NB_CHAMPS_COMMERCIAL = 7;
+    private int lineNo;
+
 
     @Autowired
     private EmployeRepository employeRepository;
@@ -76,11 +78,13 @@ public class MyRunner implements CommandLineRunner {
         logger.info(""); logger.info("STARTING BATCH COBOL STYLE"); logger.info("");
 
         List<String> lignes = stream.collect(Collectors.toList());
+        lineNo = 0;
         lignes.forEach(ligne -> {
             try {
+                lineNo++;
                 processLine(ligne);
             } catch (BatchException e) {
-                ligneProblematique(ligne, e.getMessage());
+                ligneProblematique(lineNo, ligne, e.getMessage());
             }
         });
 
@@ -127,34 +131,26 @@ public class MyRunner implements CommandLineRunner {
      */
     private void processCommercial(String ligneCommercial) throws BatchException {
         Commercial c;
-        logger.info("traitement commercial: " + ligneCommercial);
+        ArrayList common;
+        //logger.info("traitement commercial: " + ligneCommercial);
         String[] l = ligneCommercial.split(",");
         if(l.length != NB_CHAMPS_COMMERCIAL) {
             throw new BatchException("nombre de champs incorrect.");
         }
 
-        String matricule, nom, prenom;
-        matricule = l[0]; nom = l[1]; prenom = l[2];
-        if(!matricule.matches(REGEX_MATRICULE)) {
-            throw new BatchException("format matricule invalide.");
-        }
-
+        common = processCommon(ligneCommercial);
+        String nom, prenom, matricule;
         LocalDate dateEmbauche;
-        try {
-            dateEmbauche = DateTimeFormat.forPattern("dd/mm/YYYY").parseLocalDate(l[3]);
-        }
-        catch (Exception e) {
-            throw new BatchException("date invalide: " + e.getMessage());
-        }
+        Double salaire;
 
-        Double salaire, caAnnuel;
-        try {
-            salaire = Double.parseDouble(l[4]);
-        }
-        catch(Exception e) {
-            throw new BatchException("champ salaire invalide: " + e.getMessage());
-        }
-        try {
+        matricule = (String) common.get(0);
+        nom = (String) common.get(1);
+        prenom = (String) common.get(2);
+        dateEmbauche = (LocalDate) common.get(3);
+        salaire = (Double) common.get(4);
+
+       Double caAnnuel;
+       try {
             caAnnuel = Double.parseDouble(l[5]);
         }
         catch (Exception e){
@@ -175,9 +171,8 @@ public class MyRunner implements CommandLineRunner {
         catch (Exception e) {
             throw new BatchException("creation objet impossible: " + e.getMessage());
         }
-        logger.info(c.toString());
-
-
+        saveToBdd(c);
+        logger.info("OK: " + c.toString());
     }
 
     /**
@@ -187,33 +182,23 @@ public class MyRunner implements CommandLineRunner {
      */
     private void processManager(String ligneManager) throws BatchException {
         Manager m;
-        logger.info("traitement manager: " + ligneManager);
+        ArrayList common;
+        //logger.info("traitement manager: " + ligneManager);
         String[] l = ligneManager.split(",");
         if(l.length != NB_CHAMPS_MANAGER) {
             throw new BatchException("nombre de champs incorrect.");
         }
 
-        String matricule, nom, prenom;
-        matricule = l[0]; nom = l[1]; prenom = l[2];
-        if(!matricule.matches(REGEX_MATRICULE)) {
-            throw new BatchException("format matricule invalide.");
-        }
-
+        common = processCommon(ligneManager);
+        String nom, prenom, matricule;
         LocalDate dateEmbauche;
-        try {
-            dateEmbauche = DateTimeFormat.forPattern("dd/mm/YYYY").parseLocalDate(l[3]);
-        }
-        catch (Exception e) {
-            throw new BatchException("date invalide: " + e.getMessage());
-        }
-
         Double salaire;
-        try {
-            salaire = Double.parseDouble(l[4]);
-        }
-        catch(Exception e) {
-            throw new BatchException("champ salaire invalide: " + e.getMessage());
-        }
+
+        matricule = (String) common.get(0);
+        nom = (String) common.get(1);
+        prenom = (String) common.get(2);
+        dateEmbauche = (LocalDate) common.get(3);
+        salaire = (Double) common.get(4);
 
         try {
             HashSet<Technicien> equipe = new HashSet();
@@ -222,8 +207,9 @@ public class MyRunner implements CommandLineRunner {
         catch (Exception e) {
             throw new BatchException("creation objet impossible: " + e.getMessage());
         }
-        logger.info(m.toString());
 
+        saveToBdd(m);
+        logger.info("OK: " + m.toString());
     }
 
     /**
@@ -233,33 +219,23 @@ public class MyRunner implements CommandLineRunner {
      */
     private void processTechnicien(String ligneTechnicien) throws BatchException {
         Technicien t;
-        logger.info("traitement technicien: " + ligneTechnicien);
+        ArrayList common;
+        //logger.info("traitement technicien: " + ligneTechnicien);
         String[] l = ligneTechnicien.split(",");
         if(l.length != NB_CHAMPS_TECHNICIEN) {
             throw new BatchException("nombre de champs incorrect.");
         }
 
-        String matricule, nom, prenom;
-        matricule = l[0]; nom = l[1]; prenom = l[2];
-        if(!matricule.matches(REGEX_MATRICULE)) {
-            throw new BatchException("format matricule invalide.");
-        }
-
+        common = processCommon(ligneTechnicien);
+        String nom, prenom, matricule;
         LocalDate dateEmbauche;
-        try {
-            dateEmbauche = DateTimeFormat.forPattern("dd/mm/YYYY").parseLocalDate(l[3]);
-        }
-        catch (Exception e) {
-            throw new BatchException("date invalide: " + e.getMessage());
-        }
-
         Double salaire;
-        try {
-            salaire = Double.parseDouble(l[4]);
-        }
-        catch(Exception e) {
-            throw new BatchException("champ salaire invalide: " + e.getMessage());
-        }
+
+        matricule = (String) common.get(0);
+        nom = (String) common.get(1);
+        prenom = (String) common.get(2);
+        dateEmbauche = (LocalDate) common.get(3);
+        salaire = (Double) common.get(4);
 
         Integer grade;
         try {
@@ -271,7 +247,10 @@ public class MyRunner implements CommandLineRunner {
 
         String manager = l[6];
         if(!manager.matches(REGEX_MATRICULE_MANAGER)) {
-            throw new BatchException("champ manager invalide: ");
+            throw new BatchException("champ manager invalide. ");
+        }
+        if(managerRepository.findByMatricule(manager) == null) {
+            throw new BatchException("manager " + manager + " inconnu.");
         }
 
         try {
@@ -280,11 +259,56 @@ public class MyRunner implements CommandLineRunner {
         catch (Exception e) {
             throw new BatchException("creation objet impossible: " + e.getMessage());
         }
-        logger.info(t.toString());
+
+        saveToBdd(t);
+        logger.info("OK: " + t.toString());
     }
 
-    private void ligneProblematique(String ligne, String msg) {
-        logger.error(ligne + ' ' + msg);
+    private void ligneProblematique(Integer lineNo, String ligne, String msg) {
+        logger.error("ligne " + lineNo.toString() + ": " + msg + " \t\t| " + ligne);
+    }
+
+    private void saveToBdd(Employe emp) throws BatchException {
+        if (employeRepository.findByMatricule(emp.getMatricule()) != null) {
+            throw new BatchException("matricule " + emp.getMatricule() + " déjà utilisé.");
+        }
+
+        try {
+            employeRepository.save(emp);
+        }
+        catch (Exception e) {
+            throw new BatchException("insertion impossible: " + e.getMessage());
+        }
+    }
+
+    private ArrayList processCommon(String ligne) throws BatchException {
+        String[] l = ligne.split(",");
+        ArrayList r = new ArrayList();
+
+        String matricule, nom, prenom;
+        matricule = l[0]; nom = l[1]; prenom = l[2];
+        if(!matricule.matches(REGEX_MATRICULE)) {
+            throw new BatchException("format matricule invalide.");
+        }
+
+        LocalDate dateEmbauche;
+        try {
+            dateEmbauche = DateTimeFormat.forPattern("dd/mm/YYYY").parseLocalDate(l[3]);
+        }
+        catch (Exception e) {
+            throw new BatchException("date invalide: " + e.getMessage());
+        }
+
+        Double salaire;
+        try {
+            salaire = Double.parseDouble(l[4]);
+        }
+        catch(Exception e) {
+            throw new BatchException("champ salaire invalide: " + e.getMessage());
+        }
+
+        r.add(matricule); r.add(nom); r.add(prenom); r.add(dateEmbauche); r.add(salaire);
+        return r;
     }
 
 }
